@@ -1,3 +1,4 @@
+from enum import Enum
 from socket import socket
 from sys import int_info
 from dotenv import load_dotenv
@@ -7,33 +8,67 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, send
 import pigpio
+import re
 
 load_dotenv(f"{path.dirname(__file__)}/.env")
 load_dotenv(f"{path.dirname(__file__)}/.env.local")
 
+
 # ||================================================================================================
 # || LED CONTROL
 # ||================================================================================================
-ENV_DUMMY_MODE = "DUMMY_MODE"
+class ToggleState(Enum):
+    OFF = 0
+    ON = 1
 
+
+class LedState:
+
+    def __init__(self, color="#ffffff", state=ToggleState.OFF):
+        self.__color = color
+        self.__state = state
+
+    @property
+    def color(self):
+        return self.__color
+
+    @color.setter
+    def color(self, color: str):
+        if not re.match("^#[0-9,a-f]{6}$", color.lower()):
+            raise Exception(f"Invalid color: {color}")
+        self.__color = color
+
+    @property
+    def state(self):
+        return self.__state
+
+    @state.setter
+    def state(self, state: ToggleState):
+        self.__state = state
+
+    @property
+    def json(self):
+        return {
+            "color": self.__color,
+            "state": int(self.__state),
+        }
+
+
+ENV_DUMMY_MODE = "DUMMY_MODE"
 in_example_mode = getenv(ENV_DUMMY_MODE, "false") == "true"
 
 PIN_R = 3
 PIN_G = 2
 PIN_B = 4
 
-current_color = ""
-
 if not in_example_mode:
     pi = pigpio.pi()
 
 
-def set_color(color):
-    global current_color
-
-    red = int(color[1:3], 16)
-    green = int(color[3:5], 16)
-    blue = int(color[5:7], 16)
+def set_state(new_state: LedState):
+    red = int(new_state.color[1:3], 16) * int(new_state.state)
+    green = int(new_state.color[3:5], 16) * int(new_state.state)
+    blue = int(new_state.color[5:7], 16) * int(new_state.state)
 
     if in_example_mode:
         print(f"set color: r: {red}, g: {green}, b: {blue}")
@@ -41,23 +76,6 @@ def set_color(color):
         pi.set_PWM_dutycycle(PIN_R, red)
         pi.set_PWM_dutycycle(PIN_G, green)
         pi.set_PWM_dutycycle(PIN_B, blue)
-
-    current_color = color
-    return current_color
-
-
-def led_off():
-    pi.set_PWM_dutycycle(PIN_R, 0)
-    pi.set_PWM_dutycycle(PIN_G, 0)
-    pi.set_PWM_dutycycle(PIN_B, 0)
-
-
-def led_on():
-    global current_color
-    if not current_color or current_color == "":
-        set_color("#ffffff")
-    else:
-        set_color(current_color)
 
 
 # ||================================================================================================
@@ -70,37 +88,42 @@ CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+current_state = LedState()
+
 
 @app.route("/desk_control/api/state", methods=["GET"])
 def state():
-    return {"color": current_color}
+    return current_state.json
 
 
 @app.route("/desk_control/api/on", methods=["GET"])
 def on():
-    led_on()
-    socketio.emit("color", current_color)
-    return {"color": current_color}
+    current_state.state = ToggleState.ON
+    set_state(current_state)
+    socketio.emit("state", current_state.json)
+    return current_state.json
 
 
 @app.route("/desk_control/api/off", methods=["GET"])
 def off():
-    led_off()
-    socketio.emit("color", current_color)
-    return {"color": current_color}
+    current_state.state = ToggleState.OFF
+    socketio.emit("state", current_state.json)
+    return current_state.json
 
 
 @app.route("/desk_control/api/color", methods=["POST"])
 def color():
-    set_color(request.form.get("color"))
-    socketio.emit("color", current_color)
-    return {"color": current_color}
+    current_state.color = request.form.get("color")
+    socketio.emit("state", current_state.json)
+    return current_state.json
 
 
-@socketio.on("color")
+@socketio.on("state")
 def on_color(data):
-    set_color(data)
-    emit("color", current_color, include_self=False, broadcast=True)
+    current_state.state = data.get("state")
+    current_state.color = data.get("color")
+    set_state(current_state)
+    emit("state", current_state.json, include_self=False, broadcast=True)
 
 
 if __name__ == "__main__":
