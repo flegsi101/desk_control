@@ -49,8 +49,8 @@ class LedState:
     @property
     def json(self):
         return {
-            "state": self.__color,
-            "color": int(self.__state),
+            "color": self.__color,
+            "state": int(self.__state),
         }
 
 
