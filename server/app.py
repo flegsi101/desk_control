@@ -33,24 +33,24 @@ class LedState:
         return self.__color
 
     @color.setter
-    def set_color(self, color: str):
+    def color(self, color: str):
         if not re.match("^#[0-9,a-f]{6}$", color.lower()):
             raise Exception(f"Invalid color: {color}")
-        self.__color == color
+        self.__color = color
 
     @property
     def state(self):
         return self.__state
 
     @state.setter
-    def set_state(self, state: ToggleState):
+    def state(self, state: ToggleState):
         self.__state = state
 
     @property
     def json(self):
         return {
             "state": self.__color,
-            "color": self.__state,
+            "color": int(self.__state),
         }
 
 
@@ -61,17 +61,14 @@ PIN_R = 3
 PIN_G = 2
 PIN_B = 4
 
-current_state = LedState()
-
 if not in_example_mode:
     pi = pigpio.pi()
 
 
 def set_state(new_state: LedState):
-
-    red = int(new_state.color[1:3], 16) * new_state.state
-    green = int(new_state.color[3:5], 16) * new_state.state
-    blue = int(new_state.color[5:7], 16) * new_state.state
+    red = int(new_state.color[1:3], 16) * int(new_state.state)
+    green = int(new_state.color[3:5], 16) * int(new_state.state)
+    blue = int(new_state.color[5:7], 16) * int(new_state.state)
 
     if in_example_mode:
         print(f"set color: r: {red}, g: {green}, b: {blue}")
@@ -90,6 +87,8 @@ app.config["SECRET_KEY"] = "secret123"
 CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+current_state = LedState()
 
 
 @app.route("/desk_control/api/state", methods=["GET"])
@@ -119,9 +118,11 @@ def color():
     return current_state.json
 
 
-@socketio.on("color")
+@socketio.on("state")
 def on_color(data):
-    current_state.color = data
+    current_state.state = data.get("state")
+    current_state.color = data.get("color")
+    set_state(current_state)
     emit("state", current_state.json, include_self=False, broadcast=True)
 
 
