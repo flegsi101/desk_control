@@ -1,0 +1,8 @@
+{
+  "short_name": "Desk Control",
+  "name": "Desk control client",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
