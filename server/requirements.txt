@@ -1,4 +1,6 @@
 flask
 flask-cors
+flask_socketio
 pigpio
 eventlet
+python-dotenv
