@@ -1,11 +1,31 @@
 .app {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   color: #fefefe;
-  background-color: #0f0f0f;
+  background-color: #1f1e1c;
   height: 100vh;
   width: 100vw;
+
+  &--header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: #2e2c28;
+
+    &--title {
+      font-weight: bold;
+      font-size: 18pt;
+    }
+  }
+
+  &--body {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    align-items: center;
+    column-gap: 16px;
+  }
 
   &--block {
     display: flex;
@@ -13,15 +33,21 @@
   }
 }
 
-.led-color {
-  &--preview {
-    display: flex;
-    align-items: center;
+.picker {
+  grid-column: 1 / span 2;
+  display: flex;
+  justify-content: center;
+}
 
-    div {
-      height: 24px;
-      width: 24px;
-      margin-left: 24px;
-    }
-  }
+.label {
+  font-size: 14pt;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.color-input {
+  font-size: 12pt;
+  border: none;
+  outline: none;
+  padding: 4px;
 }

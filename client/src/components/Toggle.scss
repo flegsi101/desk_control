@@ -1,12 +1,29 @@
 .toggle {
-  &--body {
-    background: gray;
-  }
+  display: flex;
+  position: relative;
+  width: 48px;
+  height: 32px;
+  border-radius: 16px;
+  background: #524d45;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 
-  &--knob {
+  &::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
     width: 28px;
     height: 28px;
     border-radius: 14px;
-    background: red;
+    background-color: #c9c3b6;
+    transition: 0.2s;
+  }
+
+  &.on {
+    &::before {
+      left: 18px;
+      background-color: #fefefe;
+    }
   }
 }

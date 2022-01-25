@@ -1,56 +1,56 @@
 import React, { useEffect, useState } from "react"
 import "./App.scss"
 import { HexColorPicker } from "react-colorful"
-import axios from "axios"
-import socketIOClient, { Socket } from "socket.io-client"
-import Toggle from "./components/Toggle"
+import socketIOClient from "socket.io-client"
+import Toggle, { ToggleState } from "./components/Toggle"
 
-const api = axios.create({
-  baseURL: "http://192.168.178.5:5000/desk_control/api",
-})
+class LedState {
+  constructor(public state: ToggleState = ToggleState.OFF, public color: string = "#ffffff") {}
+}
 
 const SOCKET = "http://192.168.178.5:5000"
 const socket = socketIOClient(SOCKET)
 
 function App() {
   const [color, setColor] = useState<string>()
+  const [state, setState] = useState<ToggleState>()
 
-  useEffect(() => {
-    socket.on("color", (color) => {
-      setColor(color)
-    })
-  })
+  const updateState = (state: ToggleState) => {
+    socket.emit("state", new LedState(state, color))
+    setState(state)
+  }
 
-  const changeColor = (color: string) => {
-    socket.emit("color", color)
+  const updateColor = (color: string) => {
+    socket.emit("state", new LedState(state, color))
     setColor(color)
   }
 
   useEffect(() => {
-    if (!color) {
-      api.get("/state").then((res) => {
-        if (res.status == 200) {
-          setColor(res.data.color)
-        }
-      })
-    }
-  })
+    socket.on("state", (state) => {
+      setState(state.state)
+      setColor(state.color)
+    })
+  }, [])
 
   return (
     <div className="app">
-      <div className="control led-toggle">
-        <p>Toggle led</p>
-        <Toggle></Toggle>
+      <div className="app--header">
+        <div className="app--header--title">Desk Control</div>
       </div>
-      <div className="control led-toggle">
-        <div className="label">
-          <p>Select color</p>
-        </div>
+
+      <div className="app--body">
+        <p className="label">Toggle led</p>
+        <Toggle state={state} onChange={updateState}></Toggle>
+
+        <p className="label">Select color</p>
         <div className="led-color--preview">
-          <p>Selected: {color}</p>
+          <p>{color}</p>
           <div style={{ background: color }}></div>
         </div>
-        <HexColorPicker color={color} onChange={changeColor} />
+
+        <div className="picker">
+          <HexColorPicker color={color} onChange={updateColor} />
+        </div>
       </div>
     </div>
   )
