@@ -8,7 +8,7 @@ class LedState {
   constructor(public state: ToggleState = ToggleState.OFF, public color: string = "#ffffff") {}
 }
 
-const SOCKET = "http://192.168.178.5:5000"
+const SOCKET = "http://192.168.178.29:5000"
 const socket = socketIOClient(SOCKET)
 
 function App() {
@@ -21,7 +21,7 @@ function App() {
   }
 
   const updateColor = (color: string) => {
-    socket.emit("state", new LedState(state, color))
+    socket.emit("state", new LedState(ToggleState.ON, color))
     setColor(color)
   }
 

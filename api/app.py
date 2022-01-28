@@ -50,25 +50,29 @@ class LedState:
     def json(self):
         return {
             "color": self.__color,
-            "state": int(self.__state),
+            "state": self.__state.value,
         }
 
 
 ENV_DUMMY_MODE = "DUMMY_MODE"
-in_example_mode = getenv(ENV_DUMMY_MODE, "false") == "true"
+ENV_PIGPIO_HOST = "PIGPIO_HOST"
 
 PIN_R = 3
 PIN_G = 2
 PIN_B = 4
 
+in_example_mode = getenv(ENV_DUMMY_MODE, "false") == "true"
+pigpio_host = getenv(ENV_PIGPIO_HOST, None)
+
+
 if not in_example_mode:
-    pi = pigpio.pi()
+    pi = pigpio.pi(host=pigpio_host)
 
 
 def set_state(new_state: LedState):
-    red = int(new_state.color[1:3], 16) * int(new_state.state)
-    green = int(new_state.color[3:5], 16) * int(new_state.state)
-    blue = int(new_state.color[5:7], 16) * int(new_state.state)
+    red = int(new_state.color[1:3], 16) * new_state.state.value
+    green = int(new_state.color[3:5], 16) * new_state.state.value
+    blue = int(new_state.color[5:7], 16) * new_state.state.value
 
     if in_example_mode:
         print(f"set color: r: {red}, g: {green}, b: {blue}")
@@ -90,37 +94,15 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 current_state = LedState()
 
-
-@app.route("/desk_control/api/state", methods=["GET"])
-def state():
-    return current_state.json
-
-
-@app.route("/desk_control/api/on", methods=["GET"])
-def on():
-    current_state.state = ToggleState.ON
-    set_state(current_state)
-    socketio.emit("state", current_state.json)
-    return current_state.json
-
-
-@app.route("/desk_control/api/off", methods=["GET"])
-def off():
-    current_state.state = ToggleState.OFF
-    socketio.emit("state", current_state.json)
-    return current_state.json
-
-
-@app.route("/desk_control/api/color", methods=["POST"])
-def color():
-    current_state.color = request.form.get("color")
-    socketio.emit("state", current_state.json)
-    return current_state.json
-
+@socketio.on("connect")
+def client_connect():
+    global current_state
+    emit("state", current_state.json)
 
 @socketio.on("state")
 def on_color(data):
-    current_state.state = data.get("state")
+    global current_state
+    current_state.state = ToggleState(data.get("state"))
     current_state.color = data.get("color")
     set_state(current_state)
     emit("state", current_state.json, include_self=False, broadcast=True)
